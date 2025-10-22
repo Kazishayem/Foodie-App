@@ -48,9 +48,7 @@ class Home extends StatelessWidget {
                       ],
                     ),
 
-                    CircleAvatar(
-                      child: Image.asset("assets/images/burger3.png"),
-                    ),
+                    CircleAvatar(child: Image.asset("assets/images/man.jpg")),
 
                     // IconButton(
                     //   onPressed: () {
