@@ -1,7 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:foodie_app/constants/colors.dart';
-import 'package:foodie_app/pages/ProductShow.dart';
-import 'package:foodie_app/services/FavoriteService.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/Product/product_bloc.dart';
+import '../bloc/Product/product_event.dart';
+import '../bloc/Product/product_state.dart';
+import '../repositories/product_repository.dart';
+import '../pages/ProductShow.dart';
+import '../services/FavoriteService.dart';
+import '../constants/colors.dart';
+
+class CategoryFoodsPage extends StatelessWidget {
+  const CategoryFoodsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) =>
+          ProductBloc(ProductRepository())..add(FetchProducts()),
+      child: const CategoryFoods(),
+    );
+  }
+}
 
 class CategoryFoods extends StatefulWidget {
   const CategoryFoods({super.key});
@@ -11,88 +29,24 @@ class CategoryFoods extends StatefulWidget {
 }
 
 class _CategoryFoodsState extends State<CategoryFoods> {
-  final List<Map<String, dynamic>> foods = [
-    {
-      'name': 'Cheeseburger',
-      'subtitle': "Cheeseburger Burger",
-      'rating': 4.9,
-      'image': 'assets/images/burger3.png',
-      'description':
-          'The Cheeseburger Wendys Burger is a classic fast food burger that packs a punch of flavor in every bite. Made with a juicy beef patty cooked to perfection, it\'s topped with melted American cheese, crispy lettuce, ripe tomato, and crunchy pickles.',
-    },
-    {
-      'name': 'Hamburger',
-      'subtitle': 'Veggie Burger',
-      'rating': 4.8,
-      'image': 'assets/images/burger5.png',
-      'description':
-          'Enjoy our delicious Hamburger Veggie Burger, made with a savory blend of fresh vegetables and herbs, topped with crisp lettuce, juicy tomatoes, and tangy pickles, all served on a soft, toasted bun.',
-    },
-    {
-      'name': 'Hamburger',
-      'subtitle': 'Chicken Burger',
-      'rating': 4.6,
-      'image': 'assets/images/burger4.png',
-      'description':
-          'Enjoy our delicious Hamburger Chicken Burger, made with juicy chicken fillet and fresh veggies, topped with creamy mayo and served on a soft, toasted bun.',
-    },
-    {
-      'name': 'Hamburger',
-      'subtitle': 'Fried Chicken Burger',
-      'rating': 4.5,
-      'image': 'assets/images/burger3.png',
-      'description':
-          'Our Fried Chicken Burger comes with a crispy fried chicken fillet, lettuce, tomato, and tangy sauce inside a fluffy bun.',
-    },
-    {
-      'name': 'Hamburger',
-      'subtitle': 'Double Patty Burger',
-      'rating': 4.5,
-      'image': 'assets/images/burger4.png',
-      'description':
-          'Double the flavor! Two juicy patties stacked with cheese, lettuce, and special sauce for a mouth-watering experience.',
-    },
-    {
-      'name': 'Hamburger',
-      'subtitle': 'Double Patty Burger',
-      'rating': 4.5,
-      'image': 'assets/images/burger4.png',
-      'description':
-          'Double the flavor! Two juicy patties stacked with cheese, lettuce, and special sauce for a mouth-watering experience.',
-    },
-    {
-      'name': 'Meatbox',
-      'subtitle': 'Meatbox',
-      'rating': 4.5,
-      'image': 'assets/images/meatbox.jpg',
-      'description':
-          'Double the flavor! Two juicy patties stacked with cheese, lettuce, and special sauce for a mouth-watering experience.',
-    },
-    {
-      'name': 'Meatbox',
-      'subtitle': 'Meatbox',
-      'rating': 4.5,
-      'image': 'assets/images/meatbox.jpg',
-      'description':
-          'Double the flavor! Two juicy patties stacked with cheese, lettuce, and special sauce for a mouth-watering experience.',
-    },
-  ];
+  // Optional: category buttons
+  String selectedCategory = 'All';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Category buttons
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  categoryButton('All', isSelected: true),
+                  categoryButton('All'),
                   categoryButton('Combos'),
                   categoryButton('Sliders'),
                   categoryButton('Classic'),
@@ -101,19 +55,41 @@ class _CategoryFoodsState extends State<CategoryFoods> {
             ),
             const SizedBox(height: 20),
 
-            // Grid View
+            // Products GridView
             Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.8,
-                ),
-                itemCount: foods.length,
-                itemBuilder: (context, index) {
-                  final food = foods[index];
-                  return foodCard(context, food);
+              child: BlocBuilder<ProductBloc, ProductState>(
+                builder: (context, state) {
+                  if (state is ProductLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (state is ProductSuccess) {
+                    final products = state.products;
+                    return GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.8,
+                          ),
+                      itemCount: products.length,
+                      itemBuilder: (context, index) {
+                        final product = products[index];
+                        return foodCard(context, {
+                          'name': product.title,
+                          'subtitle': product.short,
+                          'image': product.img,
+                          'rating': 4.5, // default rating
+                          'description': product.short,
+                        });
+                      },
+                    );
+                  } else if (state is ProductEmpty) {
+                    return const Center(child: Text('No products found'));
+                  } else if (state is ProductError) {
+                    return Center(child: Text('Error: ${state.message}'));
+                  } else {
+                    return const SizedBox();
+                  }
                 },
               ),
             ),
@@ -123,32 +99,42 @@ class _CategoryFoodsState extends State<CategoryFoods> {
     );
   }
 
-  Widget categoryButton(String title, {bool isSelected = false}) {
-    return Container(
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.red : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          if (isSelected)
-            BoxShadow(
-              color: Colors.red.withOpacity(0.4),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-        ],
-      ),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.black,
-          fontWeight: FontWeight.w600,
+  // Category Button Widget
+  Widget categoryButton(String title) {
+    final isSelected = title == selectedCategory;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedCategory = title;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.red : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            if (isSelected)
+              BoxShadow(
+                color: Colors.red.withOpacity(0.4),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+          ],
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
   }
 
+  // Food Card Widget
   Widget foodCard(BuildContext context, Map<String, dynamic> food) {
     return GestureDetector(
       onTap: () {
@@ -175,7 +161,15 @@ class _CategoryFoodsState extends State<CategoryFoods> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Center(child: Image.asset(food['image'], height: 90)),
+                child: Center(
+                  child: Image.network(
+                    food['image'],
+                    height: 90,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.image_not_supported);
+                    },
+                  ),
+                ),
               ),
               Text(
                 food['name'],
@@ -184,10 +178,10 @@ class _CategoryFoodsState extends State<CategoryFoods> {
                   fontSize: 16,
                 ),
               ),
-              Text(
-                food['subtitle'],
-                style: const TextStyle(color: Colors.grey),
-              ),
+              // Text(
+              //   food['subtitle'],
+              //   style: const TextStyle(color: Colors.grey),
+              // ),
               const SizedBox(height: 5),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
